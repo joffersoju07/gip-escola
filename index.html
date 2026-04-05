@@ -122,7 +122,7 @@
 
   <div id="tela-load" class="container">
     <h2 style="color:#3b82f6">Sistema Escolar</h2>
-    <p>⏳ Sincronizando dados...</p>
+   // <p>⏳ Sincronizando dados...</p>//
   </div>
 
 <div id="tela-menu" class="container hidden">
@@ -214,332 +214,123 @@
   </div>
 
   <script>
-    let dadosCache = { turmas: [], disciplinas: [] };
-    let senhaAdmin = ""; 
-    let isAdmin = false; // [AJUSTE 1] Declarado para evitar erro no login
 
-function validarAcessoAdmin() {
-  const senhaDigitada = document.getElementById('senha-input').value;
-  google.script.run.withSuccessHandler(function(ehValido) {
-    if (ehValido) {
-      senhaAdmin = senhaDigitada;
-      document.getElementById('menu-admin').style.display = 'block'; 
-      mostrarTela('tela-admin-geral');
-      carregarDashboard();
-    } else {
-      alert('Senha incorreta!');
+    // 1. CONFIGURAÇÃO - COLOQUE SEU LINK DO GOOGLE AQUI
+const URL_GOOGLE = "SUA_URL_AQUI_TERMINADA_EM_EXEC"; 
+
+let dadosCache = { turmas: [], disciplinas: [] };
+let senhaAdmin = ""; 
+let isAdmin = false;
+let tAtual = "";
+
+// 2. FUNÇÃO MESTRE PARA FALAR COM O GOOGLE (A PONTE)
+async function falarComGoogle(acao, params = {}) {
+    try {
+        const resposta = await fetch(URL_GOOGLE, {
+            method: 'POST',
+            body: JSON.stringify({ acao: acao, params: params })
+        });
+        return await resposta.json();
+    } catch (e) {
+        console.error("Erro na ponte:", e);
     }
-  }).validarSenha(senhaDigitada);
 }
 
-    function mostrarAviso(txt) {
-      document.getElementById('aviso-msg').innerText = txt;
-      document.getElementById('modal-aviso').style.display = 'flex';
-    }
-    function fecharAviso() { document.getElementById('modal-aviso').style.display = 'none'; }
-
-    window.onload = function() {
-      google.script.run.withSuccessHandler(res => {
+// 3. CARREGAMENTO INICIAL
+window.onload = async function() {
+    try {
+        const res = await fetch(URL_GOOGLE).then(r => r.json());
         dadosCache = res;
         popularSelect('f-turma', res.turmas);
         popularSelect('r-turma', res.turmas);
         popularSelect('f-disc', res.disciplinas);
         document.getElementById('tela-load').classList.add('hidden');
         document.getElementById('tela-menu').classList.remove('hidden');
-      }).getDadosIniciais();
-    };
-
-function login() {
-  const s = document.getElementById('input-senha').value;
-  google.script.run.withSuccessHandler(valido => {
-    if(valido) {
-      isAdmin = true; 
-      senhaAdmin = s;
-      
-      const label = document.getElementById('label-modo');
-      label.innerText = "MODO: ADMINISTRADOR";
-      label.style.color = "#065f46"; 
-      label.style.background = "#dcfce7";
-      
-      document.querySelectorAll('.area-professor').forEach(el => el.style.display = 'none');
-      document.getElementById('area-admin').style.display = 'none';
-      document.getElementById('input-senha').value = ""; 
-
-      document.getElementById('btn-kanban-admin').style.display = 'block'; 
-      document.getElementById('btn-logout').style.display = 'block'; 
-      
-      mostrarAviso("Acesso Admin Liberado!");
-    } else { 
-      mostrarAviso("Senha Incorreta!"); 
+    } catch (e) {
+        alert("Erro ao sincronizar. Verifique se o Script do Google está como 'Qualquer Pessoa'.");
     }
-  }).validarSenha(s);
+};
+
+// 4. FUNÇÕES DE INTERFACE (Aquelas que não mudam)
+function mostrarAviso(txt) {
+    document.getElementById('aviso-msg').innerText = txt;
+    document.getElementById('modal-aviso').style.display = 'flex';
+}
+function fecharAviso() { document.getElementById('modal-aviso').style.display = 'none'; }
+function irPara(id) {
+    document.querySelectorAll('.container').forEach(c => c.classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
+}
+function popularSelect(id, lista) {
+    let h = '<option value="">Selecione...</option>';
+    lista.forEach(i => h += `<option value="${i}">${i}</option>`);
+    document.getElementById(id).innerHTML = h;
+}
+function fecharModal() { document.getElementById('modal').style.display = 'none'; }
+
+// 5. FUNÇÕES QUE FORAM "REFORMADAS" PARA O GITHUB
+async function login() {
+    const s = document.getElementById('input-senha').value;
+    const valido = await falarComGoogle("validarSenha", {senha: s});
+    if(valido) {
+        isAdmin = true; senhaAdmin = s;
+        const label = document.getElementById('label-modo');
+        label.innerText = "MODO: ADMINISTRADOR";
+        label.style.color = "#065f46"; label.style.background = "#dcfce7";
+        document.querySelectorAll('.area-professor').forEach(el => el.style.display = 'none');
+        document.getElementById('area-admin').style.display = 'none';
+        document.getElementById('btn-kanban-admin').style.display = 'block';
+        document.getElementById('btn-logout').style.display = 'block';
+        mostrarAviso("Acesso Admin Liberado!");
+    } else { mostrarAviso("Senha Incorreta!"); }
 }
 
 function logout() {
-  isAdmin = false;
-  senhaAdmin = "";
-  
-  const label = document.getElementById('label-modo');
-  label.innerText = "MODO: PROFESSOR";
-  label.style.color = "#b45309"; 
-  label.style.background = "#fef3c7";
-  
-  document.querySelectorAll('.area-professor').forEach(el => el.style.display = 'block');
-  document.getElementById('area-admin').style.display = 'block';
-
-  document.getElementById('btn-kanban-admin').style.display = 'none'; 
-  document.getElementById('btn-logout').style.display = 'none'; 
-  
-  mostrarAviso("Você voltou ao Modo Professor");
+    isAdmin = false; senhaAdmin = "";
+    const label = document.getElementById('label-modo');
+    label.innerText = "MODO: PROFESSOR";
+    label.style.color = "#b45309"; label.style.background = "#fef3c7";
+    document.querySelectorAll('.area-professor').forEach(el => el.style.display = 'block');
+    document.getElementById('area-admin').style.display = 'block';
+    document.getElementById('btn-kanban-admin').style.display = 'none';
+    document.getElementById('btn-logout').style.display = 'none';
+    mostrarAviso("Você voltou ao Modo Professor");
 }
 
-    function carregarDashboard() {
-  irPara('tela-admin-geral');
-  document.getElementById('col-recebido').innerHTML = "Carregando...";
-  document.getElementById('col-execucao').innerHTML = "";
-  document.getElementById('col-resolvido').innerHTML = "";
-  document.getElementById('col-concluido').innerHTML = "";
-
-  google.script.run.withSuccessHandler(ocorrencias => {
+async function carregarDashboard() {
+    irPara('tela-admin-geral');
+    document.getElementById('col-recebido').innerHTML = "Carregando...";
+    const ocorrencias = await falarComGoogle("getTodasOcorrencias");
     renderizarCardsDashboard(ocorrencias);
-  }).getTodasOcorrencias();
 }
 
-function renderizarCardsDashboard(ocorrencias) {
-  const contadores = { recebido: 0, execucao: 0, resolvido: 0, concluido: 0 };
-
-  document.getElementById('col-recebido').innerHTML = "";
-  document.getElementById('col-execucao').innerHTML = "";
-  document.getElementById('col-resolvido').innerHTML = "";
-  document.getElementById('col-concluido').innerHTML = "";
-
-  ocorrencias.forEach(o => {
-    let statusNormal = o.status.trim().toLowerCase();
-    let colunaId = "";
-    
-    if (statusNormal === "recebido") { colunaId = "col-recebido"; contadores.recebido++; }
-    else if (statusNormal === "em execução") { colunaId = "col-execucao"; contadores.execucao++; }
-    else if (statusNormal === "resolvido") { colunaId = "col-resolvido"; contadores.resolvido++; }
-    else if (statusNormal === "concluído") { colunaId = "col-concluido"; contadores.concluido++; }
-
-    if (colunaId) {
-      const div = document.createElement('div');
-      div.className = 'card';
-      div.style.borderLeftColor = getStatusColor(statusNormal);
-      div.style.position = "relative"; 
-
-      let fluxo = ["Recebido", "Em Execução", "Resolvido", "Concluído"];
-      let idx = fluxo.indexOf(o.status);
-      
-      let btnVoltar = idx > 0 ? `<button onclick="moverStatus('${o.id}','${fluxo[idx-1]}')" style="position:absolute; left:2px; top:40%; background:none; border:none; cursor:pointer; font-size:18px;" title="Recuar">⬅️</button>` : "";
-      let btnAvancar = idx < 3 ? `<button onclick="moverStatus('${o.id}','${fluxo[idx+1]}')" style="position:absolute; right:2px; top:40%; background:none; border:none; cursor:pointer; font-size:18px;" title="Avançar">➡️</button>` : "";
-
-      div.innerHTML = `
-        ${btnVoltar} ${btnAvancar}
-        <div style="padding: 0 25px;">
-          <span class="card-turma">${o.turma}</span>
-          <span class="card-aluno">${o.aluno}</span>
-          <span class="card-disc">${o.disc}</span>
-          <div style="font-size:11px; color:#666; margin-top:5px;">${o.relato.substring(0,45)}...</div>
-        </div>
-      `;
-      document.getElementById(colunaId).appendChild(div);
-    }
-  });
-
-  const cols = document.querySelectorAll('#tela-admin-geral .kanban-header');
-  cols[0].innerHTML = `🔴 RECEBIDOS (${contadores.recebido})`;
-  cols[1].innerHTML = `🟡 EM EXECUÇÃO (${contadores.execucao})`;
-  cols[2].innerHTML = `🟢 RESOLVIDOS (${contadores.resolvido})`;
-  cols[3].innerHTML = `🔵 CONCLUÍDOS (${contadores.concluido})`;
+async function moverStatus(id, novoStatus) {
+    const res = await falarComGoogle("atualizarStatusOcorrencia", {id: id, novoStatus: novoStatus, senha: senhaAdmin});
+    if(res === "OK") carregarDashboard(); else mostrarAviso(res);
 }
 
-function moverStatus(id, novoStatus) {
-  google.script.run.withSuccessHandler(res => {
-    if(res === "OK") carregarDashboard();
-    else mostrarAviso(res);
-  }).atualizarStatusOcorrencia(id, novoStatus, senhaAdmin);
+async function buscarAlunos() {
+    const t = document.getElementById('f-turma').value;
+    if(!t) return;
+    document.getElementById('f-aluno').innerHTML = '<option>Carregando...</option>';
+    const res = await falarComGoogle("getDadosFiltradosPorTurma", {turma: t});
+    let hAlunos = '<option value="">Escolha o aluno</option>';
+    res.alunos.forEach(a => hAlunos += `<option value="${a}">${a}</option>`);
+    document.getElementById('f-aluno').innerHTML = hAlunos;
+    let hDisc = '<option value="">Escolha a disciplina</option>';
+    res.disciplinas.forEach(d => hDisc += `<option value="${d}">${d}</option>`);
+    document.getElementById('f-disc').innerHTML = hDisc;
 }
 
-    function getStatusColor(s) {
-      if (s === "recebido") return "#ef4444";
-      if (s === "em execução") return "#f59e0b";
-      if (s === "resolvido") return "#10b981";
-      return "#3b82f6";
-    }
-
-    function avancarStatus(id, statusAtual) {
-      let novo = "";
-      if (statusAtual === "Recebido") novo = "Em Execução";
-      else if (statusAtual === "Em Execução") novo = "Resolvido";
-      else if (statusAtual === "Resolvido") novo = "Concluído";
-      if (!novo) return;
-      google.script.run.withSuccessHandler(res => {
-        if(res === "OK") carregarDashboard();
-        else mostrarAviso(res);
-      }).atualizarStatusOcorrencia(id, novo, senhaAdmin);
-    }
-
-    function irPara(id) {
-      document.querySelectorAll('.container').forEach(c => c.classList.add('hidden'));
-      document.getElementById(id).classList.remove('hidden');
-    }
-
-    function popularSelect(id, lista) {
-      let h = '<option value="">Selecione...</option>';
-      lista.forEach(i => h += `<option value="${i}">${i}</option>`);
-      document.getElementById(id).innerHTML = h;
-    }
-
-    function buscarAlunos() {
-      const t = document.getElementById('f-turma').value;
-      if(!t) return;
-      document.getElementById('f-aluno').innerHTML = '<option>Carregando...</option>';
-      google.script.run.withSuccessHandler(res => {
-        let hAlunos = '<option value="">Escolha o aluno</option>';
-        res.alunos.forEach(a => hAlunos += `<option value="${a}">${a}</option>`);
-        document.getElementById('f-aluno').innerHTML = hAlunos;
-        let hDisc = '<option value="">Escolha a disciplina</option>';
-        res.disciplinas.forEach(d => hDisc += `<option value="${d}">${d}</option>`);
-        document.getElementById('f-disc').innerHTML = hDisc;
-      }).getDadosFiltradosPorTurma(t);
-    }
-
-    function gerarTabela() {
-      tAtual = document.getElementById('r-turma').value;
-      if(!tAtual) return;
-      document.getElementById('wait-rel').classList.remove('hidden');
-      google.script.run.withSuccessHandler(res => {
-        document.getElementById('wait-rel').classList.add('hidden');
-        let h = '<table><thead><tr><th>ALUNO</th>';
-        res.cabecalho.forEach(c => h += `<th>${c.substring(0,3)}</th>`);
-        h += '</tr></thead><tbody>';
-        for(let aluno in res.corpo) {
-          h += `<tr><td class="nome-clicavel" onclick="verDetalhes('${aluno}')">${aluno}</td>`;
-          res.cabecalho.forEach(c => {
-            let n = res.corpo[aluno][c] || "";
-            let btn = n ? `<span class="num-box" onclick="verDetalhes('${aluno}','${c}')">${n}</span>` : "";
-            h += `<td>${btn}</td>`;
-          });
-          h += '</tr>';
-        }
-        document.getElementById('div-tabela').innerHTML = h + '</tbody></table>';
-      }).getDadosRelatorio(tAtual);
-    }
-
-    function getStatusStyle(status) {
-      status = status.trim().toLowerCase();
-      if (status === 'recebido') return 'background: #fee2e2; color: #991b1b; border-color: #fca5a5;';
-      if (status === 'em execução') return 'background: #fef3c7; color: #92400e; border-color: #fde68a;';
-      if (status === 'resolvido') return 'background: #dcfce7; color: #166534; border-color: #86efac;';
-      if (status === 'concluído') return 'background: #dbeafe; color: #1e40af; border-color: #93c5fd;';
-      return 'background: #f1f5f9; color: #475569; border-color: #cbd5e1;';
-    }
-
-    function verDetalhes(aluno, disc = null) {
-      document.getElementById('m-titulo').innerText = disc ? `${aluno} (${disc})` : aluno;
-      document.getElementById('m-aviso').innerText = "📋 CONSULTA DE REGISTROS";
-      document.getElementById('m-lista').innerHTML = "Carregando...";
-      document.getElementById('modal').style.display = 'flex';
-      google.script.run.withSuccessHandler(lista => {
-        let html = "";
-        lista.forEach(o => {
-          const style = getStatusStyle(o.status);
-          html += `<div style="border-bottom: 1px solid #f1f5f9; padding: 15px 0;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px"><small style="color: #64748b;"><b>${o.data}</b> — ${o.disc}</small><span class="badge" style="${style}">${o.status}</span></div><div style="font-size:14px; color: #334155;">${o.relato}</div></div>`;
-        });
-        document.getElementById('m-lista').innerHTML = html || "Nenhum registro.";
-      }).getDetalhesAluno(tAtual, aluno, disc);
-    }
-
-    function fecharModal() { document.getElementById('modal').style.display = 'none'; }
-
-    function salvar() {
-      const d = { turma: document.getElementById('f-turma').value, disciplina: document.getElementById('f-disc').value, aluno: document.getElementById('f-aluno').value, texto: document.getElementById('f-texto').value };
-      if(!d.turma || !d.aluno || !d.texto) return mostrarAviso("Preencha tudo!");
-      google.script.run.withSuccessHandler(() => {
-        mostrarAviso("Registro Realizado!");
-        document.getElementById('f-texto').value = "";
-        irPara('tela-menu');
-      }).salvarOcorrencia(d);
-    }
-
-    function baixarRelatorioPDF() {
-      const turma = document.getElementById('r-turma').value;
-      if(!turma) return mostrarAviso("Selecione uma turma primeiro!");
-      mostrarAviso("Gerando PDF... Aguarde alguns segundos.");
-      google.script.run.withSuccessHandler(url => { fecharAviso(); window.open(url, '_blank'); }).gerarPDFTurma(turma);
-    }
-
-/* [AJUSTE 2] Funções finais limpas e organizadas no final do script */
-
-function filtrarKanban() {
-  const termo = document.getElementById('busca-kanban').value.toLowerCase();
-  const cards = document.querySelectorAll('.card');
-  cards.forEach(card => {
-    const textoCard = card.innerText.toLowerCase();
-    card.style.display = textoCard.indexOf(termo) > -1 ? "block" : "none";
-  });
-}
-
-function iniciarDitado() {
-  // Se já houver um pop-up aberto, não faz nada
-  if (window.popupGravador && !window.popupGravador.closed) {
-    window.popupGravador.focus();
-    return;
-  }
-
-  const largura = 400;
-  const altura = 300;
-  const esquerda = (screen.width / 2) - (largura / 2);
-  const topo = (screen.height / 2) - (altura / 2);
-
-  // Abrimos o pop-up
-  window.popupGravador = window.open('', 'GravadorGIP', `width=${largura},height=${altura},left=${esquerda},top=${topo}`);
-  
-  if (!window.popupGravador) {
-    alert("Por favor, clique no ícone de bloqueio na barra de endereços e permita pop-ups!");
-    return;
-  }
-
-  window.popupGravador.document.body.innerHTML = `
-    <div style="text-align:center; font-family:sans-serif; padding:20px; background:#f8fafc;">
-      <h3 style="color:#1e40af;">Gravando...</h3>
-      <p id="status">Fale agora. O texto aparecerá abaixo:</p>
-      <div id="preview" style="margin:10px; padding:10px; border:1px solid #ddd; min-height:50px; background:white; border-radius:5px;"></div>
-      <button id="btnOk" style="padding:10px 20px; background:#22c55e; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">✅ CONCLUIR</button>
-    </div>
-  `;
-
-  const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-  recognition.lang = 'pt-BR';
-  recognition.interimResults = true;
-  recognition.continuous = true;
-
-  recognition.onresult = (event) => {
-    let parcial = '';
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      parcial += event.results[i][0].transcript;
-    }
-    window.popupGravador.document.getElementById('preview').innerText = parcial;
-  };
-
-  window.popupGravador.document.getElementById('btnOk').onclick = function() {
-    const textoFim = window.popupGravador.document.getElementById('preview').innerText;
-    if (textoFim) {
-      const campo = document.getElementById('f-texto');
-      campo.value += (campo.value ? " " : "") + textoFim;
-    }
-    recognition.stop();
-    window.popupGravador.close();
-  };
-
-  recognition.onerror = (e) => {
-    window.popupGravador.document.getElementById('status').innerHTML = "<b style='color:red;'>Erro: " + e.error + "</b><br>Verifique o cadeado da janelinha.";
-  };
-
-  recognition.start();
-}
-
+async function gerarTabela() {
+    tAtual = document.getElementById('r-turma').value;
+    if(!tAtual) return;
+    document.getElementById('wait-rel').classList.remove('hidden');
+    const res = await falarComGoogle("getDadosRelatorio", {turma: tAtual});
+    document.getElementById('wait-rel').classList.add('hidden');
+    let h = '<table><thead><tr><th>ALUNO</th>';
+    res.cabecalho.forEach(c => h += `<th>${c.substring(0,3)}</th>`);
+    h += '
   </script>
 </body>
 </html>
