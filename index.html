@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+<style>
+    /* CONFIGURAÇÕES GERAIS - Fonte aumentada para 18px */
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background: #f8fafc; 
+      padding: 15px; 
+      text-align: center; 
+      color: #333; 
+      font-size: 18px; 
+    }
+    .container { width: 100%; max-width: 500px; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); margin: auto; }
+    
+    /* MODAL DE DETALHES */
+    #modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.75); display: none; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(4px); }
+    .modal-cont { background: white; width: 92%; max-width: 450px; padding: 20px; border-radius: 12px; max-height: 85vh; overflow-y: auto; text-align: left; }
+    
+    /* MODAL DE AVISO */
+    #modal-aviso { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 10000; }
+    .aviso-box { background: white; padding: 25px; border-radius: 15px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); width: 80%; max-width: 300px; }
+    .aviso-texto { font-weight: bold; font-size: 20px; margin-bottom: 20px; color: #2563eb; }
+
+    .hidden { display: none !important; }
+    
+    /* BOTÕES VIVOS - Aumentados para 18px e com mais preenchimento (padding) */
+    .btn { 
+      width: 100%; padding: 18px; margin-top: 15px; border: none; border-radius: 10px; cursor: pointer; 
+      font-weight: 800; font-size: 18px; text-transform: uppercase; transition: all 0.2s ease;
+      letter-spacing: 1px; display: block; color: white;
+    }
+    .btn-blue { background: #22c55e; box-shadow: 0 4px 0 #16a34a; }
+    .btn-blue:active { transform: translateY(3px); box-shadow: none; }
+    .btn-secondary { background: #3b82f6; box-shadow: 0 4px 0 #2563eb; }
+    .btn-secondary:active { transform: translateY(3px); box-shadow: none; }
+    .btn-voltar { background: #fb7185; box-shadow: 0 4px 0 #e11d48; }
+    .btn-voltar:active { transform: translateY(3px); box-shadow: none; }
+
+    /* TABELAS */
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; border-radius: 10px; overflow: hidden; border: 2px solid #3b82f6; }
+    th { background: #3b82f6; color: white; padding: 12px 8px; font-size: 14px; }
+    td { border: 1px solid #e2e8f0; padding: 12px 6px; font-size: 16px; }
+    .nome-clicavel { color: #2563eb; font-weight: bold; cursor: pointer; text-decoration: underline; }
+    .num-box { background: #eff6ff; color: #1d4ed8; font-weight: 800; cursor: pointer; border-radius: 6px; display: block; padding: 10px; border: 1px solid #bfdbfe; font-size: 18px; }
+
+    /* FORMULÁRIO - Inputs e Labels maiores */
+    label { font-weight: bold; display: block; margin: 20px 0 8px; text-align: left; color: #1e293b; font-size: 19px; }
+    select, textarea, input { width: 100%; padding: 16px; border: 2px solid #3b82f6; border-radius: 8px; font-size: 18px; box-sizing: border-box; }
+    
+    /* MICROFONE AJUSTADO */
+#btn-mic.gravando {
+  background: #fee2e2 !important;
+  border-color: #ef4444 !important;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+    .badge { font-size: 12px; padding: 6px 12px; border-radius: 20px; font-weight: 800; border: 1px solid rgba(0,0,0,0.1); text-transform: uppercase; }
+    .label-modo-box { font-size: 14px; font-weight: bold; padding: 8px 20px; border-radius: 20px; display: inline-block; margin-bottom: 15px; }
+
+    /* KANBAN DASHBOARD */
+    .kanban-container { display: flex; gap: 15px; overflow-x: auto; padding: 10px 0; text-align: left; }
+    .kanban-col {
+      min-width: 280px;
+      flex: 1;
+      background: #f1f5f9;
+      border-radius: 10px;
+      padding: 10px;
+      border: 1px solid #e2e8f0;
+      max-height: 550px; 
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .kanban-header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      margin-bottom: 10px;
+      padding: 10px;
+      color: white;
+      font-weight: bold;
+      border-radius: 5px;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .card { background: white; border-radius: 8px; padding: 12px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 6px solid #ccc; position: relative; }
+    .card-turma { font-size: 13px; font-weight: bold; color: #64748b; }
+    .card-aluno { font-size: 18px; font-weight: bold; margin: 4px 0; display: block; color: #1e293b; }
+    .card-disc { font-size: 14px; color: #3b82f6; font-weight: bold; }
+    
+    /* Ajuste para não sobrepor as setinhas */
+    .card-conteudo { padding: 0 25px; } 
+</style>
+</head>
+<body>
+
+  <div id="modal-aviso">
+    <div class="aviso-box">
+      <div id="aviso-msg" class="aviso-texto"></div>
+      <button class="btn btn-blue" onclick="fecharAviso()">OK</button>
+    </div>
+  </div>
+
+  <div id="modal">
+    <div class="modal-cont">
+      <h3 id="m-titulo" style="margin-top:0; color:#2563eb; border-bottom: 3px solid #2563eb; padding-bottom:8px;"></h3>
+      <p id="m-aviso" style="font-size:12px; color: #64748b; margin: 10px 0; font-style: italic;"></p>
+      <div id="m-lista"></div>
+      <button class="btn btn-voltar" onclick="fecharModal()">FECHAR</button>
+    </div>
+  </div>
+
+  <div id="tela-load" class="container">
+    <h2 style="color:#3b82f6">Sistema Escolar</h2>
+    <p>⏳ Sincronizando dados...</p>
+  </div>
+
+<div id="tela-menu" class="container hidden">
+    <div id="label-modo" class="label-modo-box" style="color: #b45309; background: #fef3c7;">MODO: PROFESSOR</div>
+    <h2 style="color:#2563eb; margin-top: 10px;">Portal de Ocorrências</h2>
+    
+    <button class="btn btn-blue area-professor" onclick="irPara('tela-form')">Nova Ocorrência</button>
+    <button class="btn btn-secondary area-professor" onclick="irPara('tela-rel')">Painel de Pendências (PDF)</button>
+    
+<button id="btn-kanban-admin" class="btn btn-blue" style="background: #6366f1; display: none;" onclick="carregarDashboard()">🚀 PAINEL DE FLUXO (KANBAN)</button>
+
+<button id="btn-logout" class="btn btn-voltar" style="display: none; margin-top: 20px; background: #64748b; box-shadow: 0 4px 0 #475569;" onclick="logout()">SAIR DO MODO ADMIN</button>
+
+    <div id="area-admin" style="margin-top: 40px; border-top: 2px dashed #3b82f6; padding-top: 20px;">
+      <div style="display: flex; gap: 8px;">
+        <input type="password" id="input-senha" placeholder="Senha Admin">
+        <button class="btn btn-blue" style="margin:0; width: 110px; font-size: 12px;" onclick="login()">ENTRAR</button>
+      </div>
+    </div>
+</div>
+
+<div id="tela-admin-geral" class="container hidden" style="max-width: 1200px;">
+    <h2 style="color:#1e40af">Painel de Controle (Fluxo)</h2>
+
+    <div style="margin-bottom: 15px;">
+      <input type="text" id="busca-kanban" placeholder="🔍 Buscar por aluno, turma ou disciplina..." 
+       onkeyup="filtrarKanban()" 
+       style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 10px; box-sizing: border-box;">
+    </div>
+    
+    <div class="kanban-container">
+      <div class="kanban-col">
+        <div class="kanban-header" style="background: #ef4444;">🔴 RECEBIDOS</div>
+        <div id="col-recebido"></div>
+      </div>
+
+      <div class="kanban-col">
+        <div class="kanban-header" style="background: #f59e0b;">🟡 EM EXECUÇÃO</div>
+        <div id="col-execucao"></div>
+      </div>
+
+      <div class="kanban-col">
+        <div class="kanban-header" style="background: #10b981;">🟢 RESOLVIDOS</div>
+        <div id="col-resolvido"></div>
+      </div>
+
+      <div class="kanban-col">
+        <div class="kanban-header" style="background: #3b82f6;">🔵 CONCLUÍDOS</div>
+        <div id="col-concluido"></div>
+      </div>
+    </div>
+
+    <button class="btn btn-secondary" onclick="irPara('tela-rel')" style="margin-top: 15px;">Relatório por Turma</button>
+    <button class="btn btn-voltar" onclick="irPara('tela-menu')">Voltar ao Menu</button>
+  </div>
+
+<div id="tela-form" class="container hidden">
+    <h2 style="color:#2563eb">GIP - Novo Registro</h2>
+    
+    <label>Turma</label>
+    <select id="f-turma" onchange="buscarAlunos()"></select>
+    
+    <label>Disciplina</label>
+    <select id="f-disc"></select>
+    
+    <label>Aluno</label>
+    <select id="f-aluno"></select>
+    
+<label>Relato</label>
+<div style="display: flex; gap: 10px; align-items: flex-start;">
+  <textarea id="f-texto" placeholder="Descreva o ocorrido..." rows="4" style="flex: 1;"></textarea>
+  <button type="button" id="btn-mic" onclick="iniciarDitado()" 
+          style="background: #f3f4f6; border: 2px solid #3b82f6; border-radius: 12px; cursor: pointer; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; font-size: 30px; flex-shrink: 0;">
+    🎤
+  </button>
+</div>
+
+    <button class="btn btn-blue" onclick="salvar()" style="margin-top: 15px;">GRAVAR REGISTRO</button>
+    <button class="btn btn-voltar" onclick="irPara('tela-menu')">VOLTAR</button>
+  </div>
+
+  <div id="tela-rel" class="container hidden">
+    <h2 style="color:#2563eb">Painel de Pendências</h2>
+    <select id="r-turma" onchange="gerarTabela()"></select>
+    <button onclick="baixarRelatorioPDF()" style="background-color: #d9534f; color: white; border: none; padding: 12px; border-radius: 10px; cursor: pointer; margin-top: 10px; width: 100%; font-weight: bold;">GERAR PDF DA TURMA</button>
+    <div id="wait-rel" class="hidden" style="color:#2563eb; margin:15px; font-weight: bold;">🔎 Buscando...</div>
+    <div id="div-tabela" style="overflow-x:auto;"></div>
+    <button class="btn btn-voltar" onclick="irPara('tela-menu')" style="margin-top:20px">VOLTAR AO MENU</button>
+  </div>
+
+  <script>
+    let dadosCache = { turmas: [], disciplinas: [] };
+    let senhaAdmin = ""; 
+    let isAdmin = false; // [AJUSTE 1] Declarado para evitar erro no login
+
+function validarAcessoAdmin() {
+  const senhaDigitada = document.getElementById('senha-input').value;
+  google.script.run.withSuccessHandler(function(ehValido) {
+    if (ehValido) {
+      senhaAdmin = senhaDigitada;
+      document.getElementById('menu-admin').style.display = 'block'; 
+      mostrarTela('tela-admin-geral');
+      carregarDashboard();
+    } else {
+      alert('Senha incorreta!');
+    }
+  }).validarSenha(senhaDigitada);
+}
+
+    function mostrarAviso(txt) {
+      document.getElementById('aviso-msg').innerText = txt;
+      document.getElementById('modal-aviso').style.display = 'flex';
+    }
+    function fecharAviso() { document.getElementById('modal-aviso').style.display = 'none'; }
+
+    window.onload = function() {
+      google.script.run.withSuccessHandler(res => {
+        dadosCache = res;
+        popularSelect('f-turma', res.turmas);
+        popularSelect('r-turma', res.turmas);
+        popularSelect('f-disc', res.disciplinas);
+        document.getElementById('tela-load').classList.add('hidden');
+        document.getElementById('tela-menu').classList.remove('hidden');
+      }).getDadosIniciais();
+    };
+
+function login() {
+  const s = document.getElementById('input-senha').value;
+  google.script.run.withSuccessHandler(valido => {
+    if(valido) {
+      isAdmin = true; 
+      senhaAdmin = s;
+      
+      const label = document.getElementById('label-modo');
+      label.innerText = "MODO: ADMINISTRADOR";
+      label.style.color = "#065f46"; 
+      label.style.background = "#dcfce7";
+      
+      document.querySelectorAll('.area-professor').forEach(el => el.style.display = 'none');
+      document.getElementById('area-admin').style.display = 'none';
+      document.getElementById('input-senha').value = ""; 
+
+      document.getElementById('btn-kanban-admin').style.display = 'block'; 
+      document.getElementById('btn-logout').style.display = 'block'; 
+      
+      mostrarAviso("Acesso Admin Liberado!");
+    } else { 
+      mostrarAviso("Senha Incorreta!"); 
+    }
+  }).validarSenha(s);
+}
+
+function logout() {
+  isAdmin = false;
+  senhaAdmin = "";
+  
+  const label = document.getElementById('label-modo');
+  label.innerText = "MODO: PROFESSOR";
+  label.style.color = "#b45309"; 
+  label.style.background = "#fef3c7";
+  
+  document.querySelectorAll('.area-professor').forEach(el => el.style.display = 'block');
+  document.getElementById('area-admin').style.display = 'block';
+
+  document.getElementById('btn-kanban-admin').style.display = 'none'; 
+  document.getElementById('btn-logout').style.display = 'none'; 
+  
+  mostrarAviso("Você voltou ao Modo Professor");
+}
+
+    function carregarDashboard() {
+  irPara('tela-admin-geral');
+  document.getElementById('col-recebido').innerHTML = "Carregando...";
+  document.getElementById('col-execucao').innerHTML = "";
+  document.getElementById('col-resolvido').innerHTML = "";
+  document.getElementById('col-concluido').innerHTML = "";
+
+  google.script.run.withSuccessHandler(ocorrencias => {
+    renderizarCardsDashboard(ocorrencias);
+  }).getTodasOcorrencias();
+}
+
+function renderizarCardsDashboard(ocorrencias) {
+  const contadores = { recebido: 0, execucao: 0, resolvido: 0, concluido: 0 };
+
+  document.getElementById('col-recebido').innerHTML = "";
+  document.getElementById('col-execucao').innerHTML = "";
+  document.getElementById('col-resolvido').innerHTML = "";
+  document.getElementById('col-concluido').innerHTML = "";
+
+  ocorrencias.forEach(o => {
+    let statusNormal = o.status.trim().toLowerCase();
+    let colunaId = "";
+    
+    if (statusNormal === "recebido") { colunaId = "col-recebido"; contadores.recebido++; }
+    else if (statusNormal === "em execução") { colunaId = "col-execucao"; contadores.execucao++; }
+    else if (statusNormal === "resolvido") { colunaId = "col-resolvido"; contadores.resolvido++; }
+    else if (statusNormal === "concluído") { colunaId = "col-concluido"; contadores.concluido++; }
+
+    if (colunaId) {
+      const div = document.createElement('div');
+      div.className = 'card';
+      div.style.borderLeftColor = getStatusColor(statusNormal);
+      div.style.position = "relative"; 
+
+      let fluxo = ["Recebido", "Em Execução", "Resolvido", "Concluído"];
+      let idx = fluxo.indexOf(o.status);
+      
+      let btnVoltar = idx > 0 ? `<button onclick="moverStatus('${o.id}','${fluxo[idx-1]}')" style="position:absolute; left:2px; top:40%; background:none; border:none; cursor:pointer; font-size:18px;" title="Recuar">⬅️</button>` : "";
+      let btnAvancar = idx < 3 ? `<button onclick="moverStatus('${o.id}','${fluxo[idx+1]}')" style="position:absolute; right:2px; top:40%; background:none; border:none; cursor:pointer; font-size:18px;" title="Avançar">➡️</button>` : "";
+
+      div.innerHTML = `
+        ${btnVoltar} ${btnAvancar}
+        <div style="padding: 0 25px;">
+          <span class="card-turma">${o.turma}</span>
+          <span class="card-aluno">${o.aluno}</span>
+          <span class="card-disc">${o.disc}</span>
+          <div style="font-size:11px; color:#666; margin-top:5px;">${o.relato.substring(0,45)}...</div>
+        </div>
+      `;
+      document.getElementById(colunaId).appendChild(div);
+    }
+  });
+
+  const cols = document.querySelectorAll('#tela-admin-geral .kanban-header');
+  cols[0].innerHTML = `🔴 RECEBIDOS (${contadores.recebido})`;
+  cols[1].innerHTML = `🟡 EM EXECUÇÃO (${contadores.execucao})`;
+  cols[2].innerHTML = `🟢 RESOLVIDOS (${contadores.resolvido})`;
+  cols[3].innerHTML = `🔵 CONCLUÍDOS (${contadores.concluido})`;
+}
+
+function moverStatus(id, novoStatus) {
+  google.script.run.withSuccessHandler(res => {
+    if(res === "OK") carregarDashboard();
+    else mostrarAviso(res);
+  }).atualizarStatusOcorrencia(id, novoStatus, senhaAdmin);
+}
+
+    function getStatusColor(s) {
+      if (s === "recebido") return "#ef4444";
+      if (s === "em execução") return "#f59e0b";
+      if (s === "resolvido") return "#10b981";
+      return "#3b82f6";
+    }
+
+    function avancarStatus(id, statusAtual) {
+      let novo = "";
+      if (statusAtual === "Recebido") novo = "Em Execução";
+      else if (statusAtual === "Em Execução") novo = "Resolvido";
+      else if (statusAtual === "Resolvido") novo = "Concluído";
+      if (!novo) return;
+      google.script.run.withSuccessHandler(res => {
+        if(res === "OK") carregarDashboard();
+        else mostrarAviso(res);
+      }).atualizarStatusOcorrencia(id, novo, senhaAdmin);
+    }
+
+    function irPara(id) {
+      document.querySelectorAll('.container').forEach(c => c.classList.add('hidden'));
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    function popularSelect(id, lista) {
+      let h = '<option value="">Selecione...</option>';
+      lista.forEach(i => h += `<option value="${i}">${i}</option>`);
+      document.getElementById(id).innerHTML = h;
+    }
+
+    function buscarAlunos() {
+      const t = document.getElementById('f-turma').value;
+      if(!t) return;
+      document.getElementById('f-aluno').innerHTML = '<option>Carregando...</option>';
+      google.script.run.withSuccessHandler(res => {
+        let hAlunos = '<option value="">Escolha o aluno</option>';
+        res.alunos.forEach(a => hAlunos += `<option value="${a}">${a}</option>`);
+        document.getElementById('f-aluno').innerHTML = hAlunos;
+        let hDisc = '<option value="">Escolha a disciplina</option>';
+        res.disciplinas.forEach(d => hDisc += `<option value="${d}">${d}</option>`);
+        document.getElementById('f-disc').innerHTML = hDisc;
+      }).getDadosFiltradosPorTurma(t);
+    }
+
+    function gerarTabela() {
+      tAtual = document.getElementById('r-turma').value;
+      if(!tAtual) return;
+      document.getElementById('wait-rel').classList.remove('hidden');
+      google.script.run.withSuccessHandler(res => {
+        document.getElementById('wait-rel').classList.add('hidden');
+        let h = '<table><thead><tr><th>ALUNO</th>';
+        res.cabecalho.forEach(c => h += `<th>${c.substring(0,3)}</th>`);
+        h += '</tr></thead><tbody>';
+        for(let aluno in res.corpo) {
+          h += `<tr><td class="nome-clicavel" onclick="verDetalhes('${aluno}')">${aluno}</td>`;
+          res.cabecalho.forEach(c => {
+            let n = res.corpo[aluno][c] || "";
+            let btn = n ? `<span class="num-box" onclick="verDetalhes('${aluno}','${c}')">${n}</span>` : "";
+            h += `<td>${btn}</td>`;
+          });
+          h += '</tr>';
+        }
+        document.getElementById('div-tabela').innerHTML = h + '</tbody></table>';
+      }).getDadosRelatorio(tAtual);
+    }
+
+    function getStatusStyle(status) {
+      status = status.trim().toLowerCase();
+      if (status === 'recebido') return 'background: #fee2e2; color: #991b1b; border-color: #fca5a5;';
+      if (status === 'em execução') return 'background: #fef3c7; color: #92400e; border-color: #fde68a;';
+      if (status === 'resolvido') return 'background: #dcfce7; color: #166534; border-color: #86efac;';
+      if (status === 'concluído') return 'background: #dbeafe; color: #1e40af; border-color: #93c5fd;';
+      return 'background: #f1f5f9; color: #475569; border-color: #cbd5e1;';
+    }
+
+    function verDetalhes(aluno, disc = null) {
+      document.getElementById('m-titulo').innerText = disc ? `${aluno} (${disc})` : aluno;
+      document.getElementById('m-aviso').innerText = "📋 CONSULTA DE REGISTROS";
+      document.getElementById('m-lista').innerHTML = "Carregando...";
+      document.getElementById('modal').style.display = 'flex';
+      google.script.run.withSuccessHandler(lista => {
+        let html = "";
+        lista.forEach(o => {
+          const style = getStatusStyle(o.status);
+          html += `<div style="border-bottom: 1px solid #f1f5f9; padding: 15px 0;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px"><small style="color: #64748b;"><b>${o.data}</b> — ${o.disc}</small><span class="badge" style="${style}">${o.status}</span></div><div style="font-size:14px; color: #334155;">${o.relato}</div></div>`;
+        });
+        document.getElementById('m-lista').innerHTML = html || "Nenhum registro.";
+      }).getDetalhesAluno(tAtual, aluno, disc);
+    }
+
+    function fecharModal() { document.getElementById('modal').style.display = 'none'; }
+
+    function salvar() {
+      const d = { turma: document.getElementById('f-turma').value, disciplina: document.getElementById('f-disc').value, aluno: document.getElementById('f-aluno').value, texto: document.getElementById('f-texto').value };
+      if(!d.turma || !d.aluno || !d.texto) return mostrarAviso("Preencha tudo!");
+      google.script.run.withSuccessHandler(() => {
+        mostrarAviso("Registro Realizado!");
+        document.getElementById('f-texto').value = "";
+        irPara('tela-menu');
+      }).salvarOcorrencia(d);
+    }
+
+    function baixarRelatorioPDF() {
+      const turma = document.getElementById('r-turma').value;
+      if(!turma) return mostrarAviso("Selecione uma turma primeiro!");
+      mostrarAviso("Gerando PDF... Aguarde alguns segundos.");
+      google.script.run.withSuccessHandler(url => { fecharAviso(); window.open(url, '_blank'); }).gerarPDFTurma(turma);
+    }
+
+/* [AJUSTE 2] Funções finais limpas e organizadas no final do script */
+
+function filtrarKanban() {
+  const termo = document.getElementById('busca-kanban').value.toLowerCase();
+  const cards = document.querySelectorAll('.card');
+  cards.forEach(card => {
+    const textoCard = card.innerText.toLowerCase();
+    card.style.display = textoCard.indexOf(termo) > -1 ? "block" : "none";
+  });
+}
+
+function iniciarDitado() {
+  // Se já houver um pop-up aberto, não faz nada
+  if (window.popupGravador && !window.popupGravador.closed) {
+    window.popupGravador.focus();
+    return;
+  }
+
+  const largura = 400;
+  const altura = 300;
+  const esquerda = (screen.width / 2) - (largura / 2);
+  const topo = (screen.height / 2) - (altura / 2);
+
+  // Abrimos o pop-up
+  window.popupGravador = window.open('', 'GravadorGIP', `width=${largura},height=${altura},left=${esquerda},top=${topo}`);
+  
+  if (!window.popupGravador) {
+    alert("Por favor, clique no ícone de bloqueio na barra de endereços e permita pop-ups!");
+    return;
+  }
+
+  window.popupGravador.document.body.innerHTML = `
+    <div style="text-align:center; font-family:sans-serif; padding:20px; background:#f8fafc;">
+      <h3 style="color:#1e40af;">Gravando...</h3>
+      <p id="status">Fale agora. O texto aparecerá abaixo:</p>
+      <div id="preview" style="margin:10px; padding:10px; border:1px solid #ddd; min-height:50px; background:white; border-radius:5px;"></div>
+      <button id="btnOk" style="padding:10px 20px; background:#22c55e; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">✅ CONCLUIR</button>
+    </div>
+  `;
+
+  const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  recognition.lang = 'pt-BR';
+  recognition.interimResults = true;
+  recognition.continuous = true;
+
+  recognition.onresult = (event) => {
+    let parcial = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      parcial += event.results[i][0].transcript;
+    }
+    window.popupGravador.document.getElementById('preview').innerText = parcial;
+  };
+
+  window.popupGravador.document.getElementById('btnOk').onclick = function() {
+    const textoFim = window.popupGravador.document.getElementById('preview').innerText;
+    if (textoFim) {
+      const campo = document.getElementById('f-texto');
+      campo.value += (campo.value ? " " : "") + textoFim;
+    }
+    recognition.stop();
+    window.popupGravador.close();
+  };
+
+  recognition.onerror = (e) => {
+    window.popupGravador.document.getElementById('status').innerHTML = "<b style='color:red;'>Erro: " + e.error + "</b><br>Verifique o cadeado da janelinha.";
+  };
+
+  recognition.start();
+}
+
+  </script>
+</body>
+</html>
